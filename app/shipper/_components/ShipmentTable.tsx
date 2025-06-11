@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useSession } from "next-auth/react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -20,12 +20,15 @@ export default function ShipmentTable() {
   const session = useSession();
   const token = session?.data?.accessToken;
 
+  const queryClient = useQueryClient();
+
   const {
     data: allShipments,
     isLoading,
-    refetch,
+    // refetch,
   } = useQuery({
-    queryKey: ["shipments-data", searchTerm, token],
+    // queryKey: ["shipments-data", searchTerm, token],
+    queryKey: ["shipments-data"],
     queryFn: async () => {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/hub-manager/shipper-requests?search=${searchTerm}`,
@@ -58,6 +61,8 @@ export default function ShipmentTable() {
     } else {
       setTotalResults(0);
       setTotalPages(0);
+      setDisplayedShipments([]);
+      // setDisplayedShipments([]);
     }
   }, [shipments, currentPage, resultsPerPage]);
 
@@ -145,9 +150,11 @@ export default function ShipmentTable() {
       }
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       toast.success("Shipment status updated successfully");
-      await refetch();
+      queryClient.invalidateQueries({
+        queryKey: ["shipments-data"],
+      });
     },
   });
 
@@ -187,13 +194,10 @@ export default function ShipmentTable() {
                   Measurement
                 </th>
                 <th className="px-4 py-3 text-sm font-medium text-gray-600">
-                  Transporter
-                </th>
-                <th className="px-4 py-3 text-sm font-medium text-gray-600">
                   Receiver
                 </th>
                 <th className="px-4 py-3 text-sm font-medium text-gray-600">
-                  Departure Hub
+                  Destination Hub
                 </th>
                 <th className="px-4 py-3 text-sm font-medium text-gray-600">
                   Time
@@ -250,17 +254,6 @@ export default function ShipmentTable() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm font-medium text-gray-900">
-                        {shipment.transporter.name || "No Transporter Found"}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {shipment.transporter.email}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {shipment.transporter.phone}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-gray-900">
                         {shipment.receiver.name}
                       </div>
                       <div className="text-xs text-gray-500">
@@ -274,7 +267,7 @@ export default function ShipmentTable() {
                       {shipment.toHub}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      {shipment.createdAt}
+                      {new Date(shipment.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {shipment.price}
